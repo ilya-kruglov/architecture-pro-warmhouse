@@ -1,0 +1,307 @@
+@startuml ER_Diagram
+
+title ER-диаграмма - Экосистема "Умный Дом"\nЛогическая модель данных
+
+hide circle
+skinparam linetype ortho
+
+' ======================
+' User Service Database
+' ======================
+
+package "User Service Database" {
+  
+  entity "User" as user {
+    * user_id : UUID <<PK>>
+    --
+    email : VARCHAR(255) <<UNIQUE>>
+    username : VARCHAR(100)
+    password_hash : VARCHAR(255)
+    full_name : VARCHAR(200)
+    phone_number : VARCHAR(20)
+    created_at : TIMESTAMP
+    last_login : TIMESTAMP
+    is_active : BOOLEAN
+  }
+  
+  entity "Household" as household {
+    * household_id : UUID <<PK>>
+    --
+    name : VARCHAR(200)
+    address : VARCHAR(500)
+    timezone : VARCHAR(50)
+    created_at : TIMESTAMP
+    is_active : BOOLEAN
+  }
+  
+  entity "UserHousehold" as user_household {
+    * user_id : UUID <<PK>> <<FK>>
+    * household_id : UUID <<PK>> <<FK>>
+    --
+    role : VARCHAR(50)
+    joined_at : TIMESTAMP
+  }
+  
+  entity "UserRole" as user_role {
+    * role_id : UUID <<PK>>
+    --
+    role_name : VARCHAR(50) <<UNIQUE>>
+    permissions : JSONB
+    description : TEXT
+  }
+  
+  entity "Session" as session {
+    * session_id : UUID <<PK>>
+    --
+    user_id : UUID <<FK>>
+    token : VARCHAR(500)
+    expires_at : TIMESTAMP
+    ip_address : VARCHAR(45)
+    user_agent : TEXT
+    created_at : TIMESTAMP
+  }
+}
+
+' ======================
+' Device Management Database
+' ======================
+
+package "Device Management Database" {
+  
+  entity "Device" as device {
+    * device_id : UUID <<PK>>
+    * device_type_id : UUID <<FK>>
+    * household_id : UUID <<FK>>
+    --
+    serial_number : VARCHAR(100) <<UNIQUE>>
+    name : VARCHAR(200)
+    location : VARCHAR(200)
+    manufacturer : VARCHAR(100)
+    model_id : UUID <<FK>>
+    firmware_version : VARCHAR(50)
+    connection_status : VARCHAR(20)
+    last_seen_at : TIMESTAMP
+    registered_at : TIMESTAMP
+    metadata : JSONB
+  }
+  
+  entity "DeviceType" as device_type {
+    * device_type_id : UUID <<PK>>
+    --
+    type_name : VARCHAR(100) <<UNIQUE>>
+    category : VARCHAR(50)
+    capabilities : JSONB
+    description : TEXT
+    icon_url : VARCHAR(500)
+  }
+  
+  entity "DeviceModel" as device_model {
+    * model_id : UUID <<PK>>
+    * manufacturer_id : UUID <<FK>>
+    --
+    model_name : VARCHAR(200)
+    protocol : VARCHAR(50)
+    communication_type : VARCHAR(50)
+    supported_commands : JSONB
+    specifications : JSONB
+  }
+  
+  entity "DeviceStatus" as device_status {
+    * device_id : UUID <<PK>> <<FK>>
+    --
+    is_online : BOOLEAN
+    power_state : VARCHAR(20)
+    last_updated : TIMESTAMP
+    current_settings : JSONB
+    error_code : VARCHAR(50)
+    battery_level : INTEGER
+  }
+  
+  entity "Manufacturer" as manufacturer {
+    * manufacturer_id : UUID <<PK>>
+    --
+    name : VARCHAR(200) <<UNIQUE>>
+    website : VARCHAR(500)
+    support_contact : VARCHAR(200)
+    is_partner : BOOLEAN
+  }
+}
+
+' ======================
+' Automation Service Database
+' ======================
+
+package "Automation Service Database" {
+  
+  entity "AutomationRule" as automation_rule {
+    * rule_id : UUID <<PK>>
+    * household_id : UUID <<FK>>
+    * created_by : UUID <<FK>>
+    --
+    name : VARCHAR(200)
+    description : TEXT
+    is_active : BOOLEAN
+    priority : INTEGER
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+    execution_count : INTEGER
+  }
+  
+  entity "Trigger" as trigger {
+    * trigger_id : UUID <<PK>>
+    * rule_id : UUID <<FK>>
+    --
+    trigger_type : VARCHAR(50)
+    condition : JSONB
+    is_enabled : BOOLEAN
+  }
+  
+  entity "ScheduleTrigger" as schedule_trigger {
+    * trigger_id : UUID <<PK>> <<FK>>
+    --
+    cron_expression : VARCHAR(100)
+    timezone : VARCHAR(50)
+    start_date : DATE
+    end_date : DATE
+  }
+  
+  entity "DeviceTrigger" as device_trigger {
+    * trigger_id : UUID <<PK>> <<FK>>
+    * device_id : UUID <<FK>>
+    --
+    event_type : VARCHAR(100)
+    condition_operator : VARCHAR(10)
+    threshold_value : DECIMAL
+    comparison_value : DECIMAL
+  }
+  
+  entity "Action" as action {
+    * action_id : UUID <<PK>>
+    * rule_id : UUID <<FK>>
+    --
+    action_type : VARCHAR(50)
+    target_device_id : UUID <<FK>>
+    command : VARCHAR(100)
+    parameters : JSONB
+    delay_seconds : INTEGER
+    order_index : INTEGER
+  }
+  
+  entity "RuleExecution" as rule_execution {
+    * execution_id : UUID <<PK>>
+    * rule_id : UUID <<FK>>
+    --
+    triggered_at : TIMESTAMP
+    status : VARCHAR(20)
+    execution_time_ms : INTEGER
+    error_message : TEXT
+    context_data : JSONB
+  }
+}
+
+' ======================
+' Telemetry Database (TimescaleDB)
+' ======================
+
+package "Telemetry Database" #DDDDDD {
+  
+  entity "TelemetryData" as telemetry_data {
+    * time : TIMESTAMPTZ <<PK>>
+    * device_id : UUID <<PK>> <<FK>>
+    * metric_type : VARCHAR(50) <<PK>>
+    --
+    value : DECIMAL
+    unit : VARCHAR(20)
+    tags : JSONB
+  }
+  
+  entity "AggregatedMetrics" as aggregated_metrics {
+    * aggregation_id : UUID <<PK>>
+    * device_id : UUID <<FK>>
+    * metric_type : VARCHAR(50)
+    * aggregation_period : VARCHAR(20)
+    * period_start : TIMESTAMP
+    --
+    avg_value : DECIMAL
+    min_value : DECIMAL
+    max_value : DECIMAL
+    sample_count : INTEGER
+  }
+  
+  entity "DeviceEvent" as device_event {
+    * event_id : UUID <<PK>>
+    * device_id : UUID <<FK>>
+    --
+    event_type : VARCHAR(100)
+    event_time : TIMESTAMPTZ
+    severity : VARCHAR(20)
+    details : JSONB
+    resolved_at : TIMESTAMP
+  }
+}
+
+' ======================
+' Relationships
+' ======================
+
+' User Service Relationships
+user ||--o{ session : "has"
+user ||--o{ user_household : "belongs to"
+household ||--o{ user_household : "includes"
+user }o--|| user_role : "has role"
+
+' Device Relationships
+household ||--o{ device : "contains"
+device_type ||--o{ device : "is type"
+device_model ||--o{ device : "is model"
+manufacturer ||--o{ device_model : "produces"
+device ||--|| device_status : "has status"
+
+' Automation Relationships
+household ||--o{ automation_rule : "has rules"
+user ||--o{ automation_rule : "created"
+automation_rule ||--o{ trigger : "has triggers"
+automation_rule ||--o{ action : "has actions"
+automation_rule ||--o{ rule_execution : "executed as"
+
+' Trigger Inheritance (ISA hierarchy)
+trigger <|-- schedule_trigger : "is a"
+trigger <|-- device_trigger : "is a"
+
+' Device-Trigger relationship
+device ||--o{ device_trigger : "triggers"
+device ||--o{ action : "receives actions"
+
+' Telemetry Relationships
+device ||--o{ telemetry_data : "produces"
+device ||--o{ aggregated_metrics : "has metrics"
+device ||--o{ device_event : "generates events"
+
+' Cross-service references (foreign keys)
+device_status }o--|| device : "belongs to"
+action }o--|| device : "targets"
+
+note right of device
+  Примеры device_type:
+  - THERMOSTAT
+  - LIGHT_SWITCH
+  - GATE_CONTROLLER
+  - CAMERA
+  - MOTION_SENSOR
+  - SMART_PLUG
+end note
+
+note right of telemetry_data
+  TimescaleDB гипертаблица
+  Партиционирование по времени
+  и device_id для масштабирования
+end note
+
+note right of automation_rule
+  Пример правила:
+  ЕСЛИ температура > 25°C
+  ТОГДА включить кондиционер
+  И отправить уведомление
+end note
+
+@enduml
