@@ -1,0 +1,32 @@
+@startuml Telemetry_Components
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Telemetry Service\nДиаграмма компонентов
+
+Container_Boundary(telemetry_service, "Telemetry Service") {
+    
+    Component(telemetry_api, "Telemetry API", "REST/gRPC", "API для запросов телеметрии\nи метрик пользователями.")
+    
+    Component(stream_processor, "Stream Processor", "Обработка потока", "Обработка потока телеметрии\nиз Kafka в реальном времени.")
+    
+    Component(aggregator, "Data Aggregator", "Агрегация", "Агрегация данных для метрик\n(средние, максимумы, тренды).")
+    
+    Component(anomaly_detector, "Anomaly Detector", "ML/Аналитика", "Обнаружение аномалий в данных\n(скачки температуры, сбои).")
+    
+    Component(telemetry_repository, "Telemetry Repository", "Data Access", "Оптимизированный доступ\nк данным временных рядов.")
+    
+    Component(report_generator, "Report Generator", "Отчеты", "Генерация отчетов по телеметрии\nза период.")
+}
+
+' --- Взаимодействия ---
+Rel(telemetry_api, telemetry_repository, "Запросы данных", "Методы")
+Rel(telemetry_api, report_generator, "Запрос отчетов", "Методы")
+Rel(stream_processor, aggregator, "Передает данные", "Внутренний поток")
+Rel(stream_processor, anomaly_detector, "Проверка аномалий", "Внутренний поток")
+Rel(aggregator, telemetry_repository, "Сохраняет агрегаты", "Методы")
+Rel(anomaly_detector, telemetry_repository, "Сохраняет события", "Методы")
+Rel(telemetry_repository, telemetry_db, "TimescaleDB", "SQL")
+Rel_L(stream_processor, message_broker, "Подписывается на телеметрию", "Kafka Consumer")
+
+@enduml

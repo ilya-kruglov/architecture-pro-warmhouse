@@ -1,0 +1,78 @@
+@startuml To-Be_Container_Diagram
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Система "Тёплый дом" - Экосистема Умного Дома\nДиаграмма контейнеров (To-Be)
+
+' --- Люди ---
+Person(user, "Пользователь\n<size:10>Владелец дома</size>", "Управляет устройствами, настраивает сценарии\nчерез мобильное приложение или веб-интерфейс.")
+
+Person(admin, "Администратор\n<size:10>Сотрудник компании</size>", "Мониторинг системы, управление пользователями,\nтехническая поддержка.")
+
+' --- Системы ---
+System_Boundary(ecosystem, "Экосистема Умного Дома") {
+    
+    Container(api_gateway, "API Gateway", "Nginx/Kong", "Единая точка входа. Маршрутизация,\nаутентификация, rate limiting, SSL termination.")
+    
+    Container(device_service, "Device Management Service", "Go/Python", "Управление устройствами: регистрация,\nсостояние, метаданные, привязка к пользователям.")
+    
+    Container(telemetry_service, "Telemetry Service", "Python/Go", "Сбор, обработка и хранение телеметрии\nс устройств. Агрегация метрик.")
+    
+    Container(automation_service, "Automation Service", "Python", "Управление сценариями автоматизации.\nОбработка триггеров и выполнение действий.")
+    
+    Container(gateway_service, "Gateway Service", "Python/Go", "Адаптер протоколов. Преобразует сообщения\nот устройств в единый внутренний формат.")
+    
+    Container(user_service, "User Service", "Go", "Управление пользователями, аутентификация,\nавторизация, профили, дома.")
+    
+    ContainerDb(device_db, "Device Database", "PostgreSQL", "Хранение метаданных устройств,\nсостояний, связей с пользователями.")
+    
+    ContainerDb(telemetry_db, "Telemetry Database", "TimescaleDB", "Хранение временных рядов:\nтемпература, энергопотребление, события.")
+    
+    ContainerDb(user_db, "User Database", "PostgreSQL", "Хранение данных пользователей,\nролей, домов, сессий.")
+    
+    ContainerDb(automation_db, "Automation Database", "PostgreSQL", "Хранение сценариев, триггеров,\nправил, истории выполнения.")
+    
+    ContainerQueue(message_broker, "Message Broker", "Apache Kafka", "Асинхронная коммуникация\nмежду сервисами. Event-driven архитектура.")
+}
+
+' --- Внешние системы ---
+System_Ext(mobile_app, "Мобильное приложение", "iOS/Android", "Клиентское приложение для пользователей.")
+System_Ext(web_app, "Веб-приложение", "React", "Веб-интерфейс для управления системой.")
+System_Ext(partner_device, "Устройство партнёра", "Производитель", "Умные устройства различных\nпроизводителей (MQTT, HTTP, Zigbee).")
+System_Ext(heating_device, "Умный термостат", "Оборудование", "Устройство управления отоплением\nс датчиком температуры.")
+
+' --- Взаимодействия ---
+Rel(user, mobile_app, "Использует", "HTTPS")
+Rel(user, web_app, "Использует", "HTTPS")
+Rel(admin, web_app, "Использует", "HTTPS")
+
+Rel(mobile_app, api_gateway, "API вызовы", "REST/HTTPS")
+Rel(web_app, api_gateway, "API вызовы", "REST/HTTPS")
+
+Rel(api_gateway, device_service, "Запросы управления\nустройствами", "gRPC/HTTP")
+Rel(api_gateway, telemetry_service, "Запросы телеметрии", "gRPC/HTTP")
+Rel(api_gateway, automation_service, "Запросы сценариев", "gRPC/HTTP")
+Rel(api_gateway, user_service, "Аутентификация/\nуправление пользователями", "gRPC/HTTP")
+
+Rel(device_service, device_db, "Чтение/запись", "SQL")
+Rel(user_service, user_db, "Чтение/запись", "SQL")
+Rel(telemetry_service, telemetry_db, "Запись/чтение\nвременных рядов", "SQL")
+Rel(automation_service, automation_db, "Чтение/запись", "SQL")
+
+' --- Event-driven взаимодействия ---
+Rel(device_service, message_broker, "Публикует события\nоб изменении состояния", "Kafka")
+Rel(gateway_service, message_broker, "Публикует телеметрию\nс устройств", "Kafka")
+Rel(message_broker, telemetry_service, "Получает телеметрию\nдля обработки", "Kafka")
+Rel(message_broker, automation_service, "Получает события\nдля триггеров", "Kafka")
+Rel(automation_service, message_broker, "Публикует команды\nустройствам", "Kafka")
+Rel(message_broker, gateway_service, "Получает команды\nдля отправки устройствам", "Kafka")
+
+' --- Взаимодействие с устройствами ---
+Rel(gateway_service, partner_device, "Принимает телеметрию/\nОтправляет команды", "MQTT/HTTP/Zigbee")
+Rel(gateway_service, heating_device, "Принимает телеметрию/\nОтправляет команды", "MQTT/HTTP")
+
+' --- Внутренние синхронные вызовы ---
+Rel(device_service, user_service, "Запрос информации\nо пользователе", "gRPC")
+Rel(automation_service, device_service, "Получение информации\nоб устройствах", "gRPC")
+
+@enduml

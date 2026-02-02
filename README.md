@@ -79,17 +79,41 @@
 
 В этом задании вам нужно предоставить только диаграммы в модели C4. Мы не просим вас отдельно описывать получившиеся микросервисы и то, как вы определили взаимодействия между компонентами To-Be системы. Если вы правильно подготовите диаграммы C4, они и так это покажут.
 
+### Архитектурные решения
+На основе DDD-доменов, выделенных в задании 1, спроектирована следующая микросервисная архитектура:
+#### Выделенные микросервисы (To-Be):
+1. `device-management-service` (Core Domain) - управление устройствами.
+2. `telemetry-service` (Supporting Domain) - сбор и хранение телеметрии.
+3. `automation-service` (Core Domain) - сценарии и автоматизация.
+4. `gateway-service` (Supporting Domain) - адаптация протоколов устройств.
+5. `user-service` (Generic Domain) - управление пользователями и безопасность.
+6. `api-gateway` - единая точка входа для клиентов.
+#### Ключевые технологические решения:
+- **Message Broker (Kafka)** - для асинхронного взаимодействия между сервисами.
+- **API Gateway** - для маршрутизации запросов, аутентификации и rate limiting.
+- **Специализированные БД** - PostgreSQL для транзакционных данных, TimescaleDB для телеметрии.
+
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+![To-Be Container Diagram C4](schemas/To-Be_Container_Diagram_C4.png)
+[Ссылка на исходный код UML](schemas/To-Be_Container_Diagram_C4.puml)
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+1. Микросервис **Device Management Service**
+![Device Management Service](schemas/Device_Management_Components_C4.png)
+[Ссылка на исходный код UML](schemas/Device_Management_Components_C4.puml)
+2. Микросервис **Telemetry Service**
+![Telemetry Service](schemas/Telemetry_Components_C4.png)
+[Ссылка на исходный код UML](schemas/Telemetry_Components_C4.puml)
+3. Микросервис **Automation Service**
+![Automation Service](schemas/Automation_Components_C4.png)
+[Ссылка на исходный код UML](schemas/Automation_Components_C4.puml)
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+![Code Diagram](schemas/Automation_Code_Diagram.png)
+[Ссылка на исходный код UML](schemas/Automation_Code_Diagram.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
