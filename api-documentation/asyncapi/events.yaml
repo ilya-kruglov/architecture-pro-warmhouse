@@ -1,0 +1,207 @@
+asyncapi: 2.6.0
+info:
+  title: Smart Home Events API
+  version: 1.0.0
+  description: Асинхронные события системы умного дома
+
+servers:
+  production:
+    url: kafka://kafka.warmhouse.example.com:9092
+    protocol: kafka
+    description: Production Kafka cluster
+
+channels:
+  device.telemetry:
+    subscribe:
+      summary: Подписка на телеметрию устройств
+      message:
+        $ref: '#/components/messages/TelemetryMessage'
+
+  device.events:
+    subscribe:
+      summary: Подписка на события устройств
+      message:
+        $ref: '#/components/messages/DeviceEventMessage'
+
+  device.commands:
+    publish:
+      summary: Публикация команд устройствам
+      message:
+        $ref: '#/components/messages/DeviceCommandMessage'
+
+  automation.triggers:
+    subscribe:
+      summary: Подписка на триггеры автоматизации
+      message:
+        $ref: '#/components/messages/TriggerMessage'
+
+  automation.actions:
+    publish:
+      summary: Публикация действий автоматизации
+      message:
+        $ref: '#/components/messages/ActionMessage'
+
+components:
+  messages:
+    TelemetryMessage:
+      name: TelemetryMessage
+      title: Телеметрия устройства
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TelemetryPayload'
+
+    DeviceEventMessage:
+      name: DeviceEventMessage
+      title: Событие устройства
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceEventPayload'
+
+    DeviceCommandMessage:
+      name: DeviceCommandMessage
+      title: Команда устройству
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceCommandPayload'
+
+    TriggerMessage:
+      name: TriggerMessage
+      title: Триггер автоматизации
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TriggerPayload'
+
+    ActionMessage:
+      name: ActionMessage
+      title: Действие автоматизации
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ActionPayload'
+
+  schemas:
+    TelemetryPayload:
+      type: object
+      required:
+        - device_id
+        - timestamp
+        - metric_type
+        - value
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        metric_type:
+          type: string
+          enum: [temperature, humidity, power, motion, light]
+        value:
+          oneOf:
+            - type: number
+            - type: string
+            - type: boolean
+        unit:
+          type: string
+          example: °C
+        metadata:
+          type: object
+
+    DeviceEventPayload:
+      type: object
+      required:
+        - event_id
+        - device_id
+        - event_type
+        - timestamp
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum: [device_online, device_offline, motion_detected, door_opened, temperature_alert]
+        timestamp:
+          type: string
+          format: date-time
+        severity:
+          type: string
+          enum: [info, warning, error, critical]
+        data:
+          type: object
+
+    DeviceCommandPayload:
+      type: object
+      required:
+        - command_id
+        - device_id
+        - command
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        command:
+          type: string
+          example: turn_on
+        parameters:
+          type: object
+        issued_by:
+          type: string
+          enum: [user, automation, system]
+        issued_at:
+          type: string
+          format: date-time
+
+    TriggerPayload:
+      type: object
+      required:
+        - trigger_id
+        - rule_id
+        - timestamp
+      properties:
+        trigger_id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        trigger_type:
+          type: string
+          enum: [device_event, schedule, manual]
+        event_data:
+          type: object
+
+    ActionPayload:
+      type: object
+      required:
+        - action_id
+        - rule_id
+        - action_type
+      properties:
+        action_id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        action_type:
+          type: string
+          enum: [device_command, notification, delay]
+        target:
+          type: string
+        command:
+          type: string
+        parameters:
+          type: object
+        execute_after:
+          type: string
+          format: date-time
