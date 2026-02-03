@@ -18,13 +18,18 @@ import (
 type SensorHandler struct {
 	DB                 *db.DB
 	TemperatureService *services.TemperatureService
+	DeviceClient       *services.DeviceClient
+	TelemetryClient    *services.TelemetryClient
 }
 
 // NewSensorHandler creates a new SensorHandler
-func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService) *SensorHandler {
+func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService,
+	deviceClient *services.DeviceClient, telemetryClient *services.TelemetryClient) *SensorHandler {
 	return &SensorHandler{
 		DB:                 db,
 		TemperatureService: temperatureService,
+		DeviceClient:       deviceClient,
+		TelemetryClient:    telemetryClient,
 	}
 }
 
@@ -39,6 +44,8 @@ func (h *SensorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sensors.DELETE("/:id", h.DeleteSensor)
 		sensors.PATCH("/:id/value", h.UpdateSensorValue)
 		sensors.GET("/temperature/:location", h.GetTemperatureByLocation)
+		sensors.POST("/register-device", h.RegisterDeviceInService)
+		sensors.GET("/:id/telemetry", h.GetSensorTelemetry) 
 	}
 }
 
@@ -210,4 +217,61 @@ func (h *SensorHandler) UpdateSensorValue(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Sensor value updated successfully"})
+}
+
+// RegisterDeviceInService handles POST /api/v1/sensors/register-device
+func (h *SensorHandler) RegisterDeviceInService(c *gin.Context) {
+	var request struct {
+		Name     string `json:"name" binding:"required"`
+		Type     string `json:"type" binding:"required"`
+		Location string `json:"location" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Регистрируем устройство в микросервисе Device Service
+	device, err := h.DeviceClient.CreateDevice(request.Name, request.Type, request.Location)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to register device in service: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Device registered in microservice",
+		"device":  device,
+	})
+}
+
+// GetSensorTelemetry handles GET /api/v1/sensors/:id/telemetry
+func (h *SensorHandler) GetSensorTelemetry(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sensor ID"})
+		return
+	}
+
+	sensor, err := h.DB.GetSensorByID(context.Background(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sensor not found"})
+		return
+	}
+
+	// Получаем телеметрию из микросервиса Telemetry Service
+	telemetry, err := h.TelemetryClient.GetTelemetry(fmt.Sprintf("%d", sensor.ID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to fetch telemetry: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sensor":    sensor,
+		"telemetry": telemetry,
+	})
 }

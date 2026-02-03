@@ -1,10 +1,6 @@
--- Create the database if it doesn't exist
-CREATE DATABASE smarthome;
+-- This script runs in the smarthome database (already created by POSTGRES_DB env var)
 
--- Connect to the database
-\c smarthome;
-
--- Create the sensors table
+-- Create the sensors table if it doesn't exist
 CREATE TABLE IF NOT EXISTS sensors (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -21,3 +17,16 @@ CREATE TABLE IF NOT EXISTS sensors (
 CREATE INDEX IF NOT EXISTS idx_sensors_type ON sensors(type);
 CREATE INDEX IF NOT EXISTS idx_sensors_location ON sensors(location);
 CREATE INDEX IF NOT EXISTS idx_sensors_status ON sensors(status);
+
+-- Insert some sample data for testing (only if table is empty)
+INSERT INTO sensors (name, type, location, unit, status) 
+SELECT 'Living Room Temperature', 'temperature', 'Living Room', '°C', 'active'
+WHERE NOT EXISTS (SELECT 1 FROM sensors WHERE location = 'Living Room');
+
+INSERT INTO sensors (name, type, location, unit, status) 
+SELECT 'Bedroom Temperature', 'temperature', 'Bedroom', '°C', 'active'
+WHERE NOT EXISTS (SELECT 1 FROM sensors WHERE location = 'Bedroom');
+
+INSERT INTO sensors (name, type, location, unit, status) 
+SELECT 'Kitchen Temperature', 'temperature', 'Kitchen', '°C', 'active'
+WHERE NOT EXISTS (SELECT 1 FROM sensors WHERE location = 'Kitchen');

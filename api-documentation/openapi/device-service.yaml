@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: Device Management Service API
+  description: API для регистрации и управления устройствами
+  version: 1.0.0
+
+paths:
+  /devices:
+    post:
+      summary: Регистрация нового устройства
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      responses:
+        '201':
+          description: Устройство успешно зарегистрировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '400':
+          description: Неверные данные устройства
+
+    get:
+      summary: Получение списка устройств пользователя
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: household_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: device_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [thermostat, light, camera, sensor, gate]
+      responses:
+        '200':
+          description: Список устройств
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceResponse'
+
+  /devices/{deviceId}:
+    get:
+      summary: Получение информации об устройстве
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация об устройстве
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '404':
+          description: Устройство не найдено
+
+    patch:
+      summary: Обновление устройства
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Устройство обновлено
+        '404':
+          description: Устройство не найдено
+
+  /devices/{deviceId}/commands:
+    post:
+      summary: Отправка команды устройству
+      tags:
+        - Commands
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCommand'
+      responses:
+        '202':
+          description: Команда принята к выполнению
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+        '400':
+          description: Неверная команда для устройства
+        '404':
+          description: Устройство не найдено
+
+components:
+  schemas:
+    RegisterDeviceRequest:
+      type: object
+      required:
+        - serial_number
+        - device_type
+        - name
+      properties:
+        serial_number:
+          type: string
+          example: SN-1234567890
+        device_type:
+          type: string
+          enum: [thermostat, light, camera, sensor, gate]
+          example: thermostat
+        name:
+          type: string
+          example: Термостат в гостиной
+        location:
+          type: string
+          example: Гостиная
+        household_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: true
+
+    DeviceResponse:
+      type: object
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+        device_type:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, error]
+        last_seen:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        household:
+          $ref: '#/components/schemas/HouseholdInfo'
+
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    DeviceCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          example: turn_on
+        parameters:
+          type: object
+          additionalProperties: true
+          example:
+            temperature: 22.5
+            mode: auto
+
+    CommandResponse:
+      type: object
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, executing, completed, failed]
+        accepted_at:
+          type: string
+          format: date-time
+
+    HouseholdInfo:
+      type: object
+      properties:
+        household_id:
+          type: string
+          format: uuid
+        name:
+          type: string

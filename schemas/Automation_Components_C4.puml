@@ -1,0 +1,31 @@
+@startuml Automation_Components
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Automation Service\nДиаграмма компонентов
+
+Container_Boundary(automation_service, "Automation Service") {
+    
+    Component(automation_api, "Automation API", "REST/gRPC", "API для управления сценариями,\nправилами, триггерами.")
+    
+    Component(rule_engine, "Rule Engine", "Движок правил", "Интерпретация и выполнение\nправил автоматизации.")
+    
+    Component(trigger_processor, "Trigger Processor", "Обработчик триггеров", "Мониторинг событий и активация\nсоответствующих триггеров.")
+    
+    Component(action_executor, "Action Executor", "Исполнитель действий", "Выполнение действий: отправка\nкоманд устройствам, уведомления.")
+    
+    Component(scenario_repository, "Scenario Repository", "Data Access", "Хранение и управление\nсценариями и правилами.")
+    
+    Component(scheduler, "Scheduler", "Планировщик", "Выполнение сценариев по\nрасписанию (cron-like).")
+}
+
+' --- Взаимодействия ---
+Rel(automation_api, scenario_repository, "CRUD сценариев", "Методы")
+Rel(trigger_processor, rule_engine, "Активирует правила", "События")
+Rel(rule_engine, action_executor, "Запускает действия", "Команды")
+Rel(scheduler, trigger_processor, "Генерирует события\nпо расписанию", "Таймеры")
+Rel(scenario_repository, automation_db, "Automation DB", "SQL")
+Rel_L(trigger_processor, message_broker, "Подписывается на события", "Kafka Consumer")
+Rel_R(action_executor, message_broker, "Публикует команды", "Kafka Producer")
+
+@enduml

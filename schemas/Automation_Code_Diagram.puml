@@ -1,0 +1,123 @@
+@startuml Automation_Code_Diagram
+title Automation Service - Модель данных и логика выполнения правил
+
+top to bottom direction
+
+class User {
+  +String userId
+  +String email
+  +String name
+  +List<Household> households
+  +List<Device> devices
+}
+
+class Household {
+  +String householdId
+  +String name
+  +String address
+  +User owner
+  +List<Device> devices
+}
+
+class Device {
+  +String deviceId
+  +String name
+  +DeviceType type
+  +DeviceStatus status
+  +String location
+  +Map<String, String> metadata
+  +void updateStatus(DeviceStatus)
+  +boolean isOnline()
+}
+
+enum DeviceType {
+  THERMOSTAT
+  LIGHT_SWITCH
+  GATE_CONTROLLER
+  CAMERA
+  SENSOR
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+class AutomationRule {
+  +String ruleId
+  +String name
+  +String description
+  +RuleTrigger trigger
+  +List<RuleAction> actions
+  +boolean isActive
+  +void activate()
+  +void deactivate()
+  +boolean evaluate(Event)
+}
+
+class RuleTrigger {
+  +TriggerType type
+  +String deviceId
+  +String condition  // "temperature > 26
+  +String schedule   // "0 8 * * *"
+  +boolean matches(Event)
+}
+
+enum TriggerType {
+  DEVICE_EVENT
+  SCHEDULE
+  DEVICE_STATE
+}
+
+class RuleAction {
+  +ActionType type
+  +String targetDeviceId
+  +String command      // "turn_on", "set_temperature"
+  +Map<String, Object> parameters
+  +void execute()
+}
+
+enum ActionType {
+  DEVICE_COMMAND
+  NOTIFICATION
+  SCENE_ACTIVATION
+}
+
+class Event {
+  +String eventId
+  +EventType type
+  +String deviceId
+  +Map<String, Object> data
+  +Timestamp timestamp
+}
+
+enum EventType {
+  TEMPERATURE_CHANGED
+  DEVICE_TURNED_ON
+  MOTION_DETECTED
+  DOOR_OPENED
+}
+
+' --- Связи ---
+User "1" -- "*" Household : owns
+Household "1" -- "*" Device : contains
+User "1" -- "*" Device : has access to
+
+User "1" -- "*" AutomationRule : creates
+AutomationRule "1" -- "1" RuleTrigger : has
+AutomationRule "1" -- "*" RuleAction : executes
+
+Device "1" -- "*" Event : generates
+Event "1" -- "*" AutomationRule : triggers
+
+note top of AutomationRule
+  Пример правила:
+  Если температура > 26°C (триггер)
+  Тогда включить кондиционер (действие)
+  И отправить уведомление (действие)
+end note
+
+@enduml

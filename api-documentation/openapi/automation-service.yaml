@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: Automation Service API
+  description: API для управления сценариями автоматизации
+  version: 1.0.0
+
+paths:
+  /rules:
+    post:
+      summary: Создание нового правила автоматизации
+      tags:
+        - Rules
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+      responses:
+        '201':
+          description: Правило создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleResponse'
+
+    get:
+      summary: Получение списка правил
+      tags:
+        - Rules
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: household_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список правил
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleResponse'
+
+  /rules/{ruleId}:
+    put:
+      summary: Обновление правила
+      tags:
+        - Rules
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Правило обновлено
+        '404':
+          description: Правило не найдено
+
+    delete:
+      summary: Удаление правила
+      tags:
+        - Rules
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Правило удалено
+        '404':
+          description: Правило не найдено
+
+components:
+  schemas:
+    CreateRuleRequest:
+      type: object
+      required:
+        - name
+        - triggers
+        - actions
+      properties:
+        name:
+          type: string
+          example: Включить свет при движении
+        description:
+          type: string
+          example: Включить свет в коридоре при обнаружении движения
+        household_id:
+          type: string
+          format: uuid
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerDefinition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionDefinition'
+        is_active:
+          type: boolean
+          default: true
+
+    TriggerDefinition:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [device, schedule, manual]
+          example: device
+        device_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          example: motion_detected
+        condition:
+          type: object
+          properties:
+            operator:
+              type: string
+              enum: [eq, gt, lt, gte, lte]
+            value:
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+        schedule:
+          type: object
+          properties:
+            cron:
+              type: string
+              example: "0 8 * * *"
+            timezone:
+              type: string
+              example: Europe/Moscow
+
+    ActionDefinition:
+      type: object
+      required:
+        - type
+        - target
+      properties:
+        type:
+          type: string
+          enum: [device_command, notification, delay]
+        target:
+          type: string
+          description: device_id или user_id
+        command:
+          type: string
+          example: turn_on
+        parameters:
+          type: object
+          additionalProperties: true
+        delay_seconds:
+          type: integer
+          example: 5
+
+    RuleResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerDefinition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionDefinition'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        execution_count:
+          type: integer
+
+    UpdateRuleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerDefinition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionDefinition'
