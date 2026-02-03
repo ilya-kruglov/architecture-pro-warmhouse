@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Этап 1: Только монолит (текущее состояние)
+  stage1-monolith:
+    extends:
+      file: docker-compose.yml
+      service: app
+    container_name: stage1-monolith
+  
+  # Этап 2: Монолит + Device Service
+  stage2-hybrid:
+    extends:
+      file: docker-compose-mvp.yml
+      service: app
+    container_name: stage2-hybrid
+    environment:
+      - MIGRATION_PHASE=2
+      - DEVICE_SERVICE_ENABLED=true
+  
+  # Этап 3: Полная микросервисная архитектура
+  stage3-microservices:
+    extends:
+      file: docker-compose-mvp.yml
+    container_name: stage3-full-mvp
+    environment:
+      - MIGRATION_PHASE=3
+      - LEGACY_MODE=false

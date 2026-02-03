@@ -233,11 +233,63 @@ curl "http://localhost:8081/temperature?location=Living%20Room"
 
 # **Задание 6. Разработка MVP**
 
-Необходимо создать новые микросервисы и обеспечить их интеграции с существующим монолитом для плавного перехода к микросервисной архитектуре. 
+### Архитектурный подход: стратегия Strangler Fig Pattern
+Для плавного перехода от монолита к микросервисам используем паттерн "Strangler Fig":
+1. **Фаза 1**: Монолит остаётся основным, новые микросервисы запускаются параллельно.
+2. **Фаза 2**: Монолит начинает делегировать функциональность микросервисам.
+3. **Фаза 3**: Полный переход на микросервисную архитектуру.
 
-### **Что нужно сделать**
+### Созданные микросервисы (структуры):
+1. **Device Management Service** (Python/FastAPI) - управление устройствами.
+2. **Telemetry Service** (Python/FastAPI) - сбор и хранение телеметрии.
+3. **Message Broker** (RabbitMQ) - асинхронная коммуникация.
+4. **API Gateway** (Nginx) - маршрутизация запросов.
 
-1. Создайте новые микросервисы для управления телеметрией и устройствами (с простейшей логикой), которые будут интегрированы с существующим монолитным приложением. Каждый микросервис на своем ООП языке.
-2. Обеспечьте взаимодействие между микросервисами и монолитом (при желании с помощью брокера сообщений), чтобы постепенно перенести функциональность из монолита в микросервисы. 
+### Инструкция по запуску и тестированию
 
-В результате у вас должны быть созданы Dockerfiles и docker-compose для запуска микросервисов. 
+#### Запуск MVP архитектуры:
+```
+cd apps
+sudo docker compose -f docker-compose-mvp.yml up --build -d
+```
+#### Остановка всего с удалением volume:
+```
+sudo docker compose down -v
+```
+#### Проверка всех сервисов:
+```
+# 1. Проверка health check
+curl http://localhost/health
+curl http://localhost:8082/health  # Device Service
+curl http://localhost:8083/health  # Telemetry Service
+curl http://localhost:8081/health  # Temperature API
+
+# 2. Тестирование Device Service
+curl -X POST http://localhost/api/v2/devices \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Smart Thermostat", "device_type": "thermostat", "location": "Living Room"}'
+
+curl http://localhost/api/v2/devices
+
+# 3. Тестирование Telemetry Service
+curl -X POST http://localhost/api/v2/telemetry \
+  -H "Content-Type: application/json" \
+  -d '{"device_id": "device-123", "metric_type": "temperature", "value": 22.5, "unit": "°C"}'
+
+curl "http://localhost/api/v2/telemetry?device_id=device-123"
+
+# 4. Проверка обратной совместимости
+curl http://localhost/api/v1/sensors  # Монолит всё ещё работает
+```
+### Миграция трафика
+apps/nginx.conf
+```
+# В nginx.conf можно контролировать маршрутизацию
+location /api/v1/devices {
+    # Постепенно переключаем трафик на новый сервис
+    if ($arg_migrate = "true") {
+        proxy_pass http://device_service/devices;
+    }
+    proxy_pass http://monolith/api/v1/devices;
+}
+```
